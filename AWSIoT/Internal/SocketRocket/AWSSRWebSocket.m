@@ -658,7 +658,7 @@ static __strong NSData *CRLFCRLF;
             networkServiceType = NSStreamNetworkServiceTypeVoice;
             break;
         default:
-            if (@available(iOS 10.0, *)) {
+            if (@available(tvOS 10.0, *)) {
                 if (requestNetworkServiceType == NSURLNetworkServiceTypeCallSignaling) {
                     networkServiceType = NSStreamNetworkServiceTypeCallSignaling;
                 }

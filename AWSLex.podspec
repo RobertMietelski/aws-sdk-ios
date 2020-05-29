@@ -8,11 +8,11 @@ Pod::Spec.new do |s|
   s.homepage     = 'http://aws.amazon.com/mobile/sdk'
   s.license      = 'Apache 2.0 AND AWS Customer Agreement'
   s.author       = { 'Amazon Web Services' => 'amazonwebservices' }
-  s.platform     = :ios, '8.0'
-  s.source       = { :git => 'https://github.com/aws/aws-sdk-ios.git',
+  s.tvos.deployment_target = '9.0'
+  s.source       = { :git => 'https://github.com/RobertMietelski/aws-sdk-tvos.git',
                      :tag => s.version}
   s.requires_arc = true
-  s.dependency 'AWSCore', '2.13.4'
+  s.dependency 'AWSCore'
   s.source_files = 'AWSLex/*.{h,m}', 'AWSLex/Bluefront/include/*.h'
   s.public_header_files = 'AWSLex/*.h'
   s.private_header_files = 'AWSLex/Bluefront/include/*.h'

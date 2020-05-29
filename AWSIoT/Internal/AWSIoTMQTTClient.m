@@ -354,7 +354,7 @@
     //The "x-amzn-mqtt-ca" protocol is only supported on port 443.
     if (self.port == 443) {
         //SSLSetALPNProtocols is only available from iOS 11 onwards.
-        if (@available(iOS 11.0, *)) {
+        if (@available(tvOS 11.0, *)) {
             //Get the SSL Context
             SSLContextRef context = (__bridge SSLContextRef) [_decoderStream propertyForKey: (__bridge NSString *) kCFStreamPropertySSLContext ];
 

@@ -100,20 +100,6 @@ extension AWSMobileClient: AWSIdentityProviderManager {
             return userPoolsTokenTask.task
         } else if federationProvider == .oidcFederation {
             dict.addEntries(from: self.cachedLoginsMap)
-        } else if federationProvider == .hostedUI {
-            if !federationDisabled {
-                let hostedUITokenTask: AWSTaskCompletionSource<NSDictionary> = AWSTaskCompletionSource.init()
-                self.getTokens { (tokens, error) in
-                    if let tokens = tokens {
-                        dict[self.userPoolClient!.identityProviderName] = tokens.idToken!.tokenString!
-                        hostedUITokenTask.set(result: dict as NSDictionary)
-                    } else if let error = error {
-                        hostedUITokenTask.set(error: error)
-                    }
-                }
-                return hostedUITokenTask.task
-            }
-            
         }
         let task = AWSTask.init(result: dict as NSDictionary)
         return task
@@ -489,22 +475,6 @@ extension AWSMobileClient {
     ///   - options: SignOutOptions which specify actions.
     ///   - completionHandler: completion handler for success or error callback.
     public func signOut(options: SignOutOptions = SignOutOptions(), completionHandler: @escaping ((Error?) -> Void)) {
-        // If using hosted UI, we need to launch SFSafariVC or SFAuthSession to invalidate token
-        if federationProvider == .hostedUI {
-            if options.invalidateTokens {
-                AWSCognitoAuth.init(forKey: CognitoAuthRegistrationKey).signOut { (error) in
-                    // If there is an error invalidating tokens, we return error to the developer.
-                    if (error != nil) {
-                        completionHandler(AWSMobileClientError.makeMobileClientError(from: error!))
-                    } else {
-                        // If the token is successfully invalidated, we clear tokens locally and perform signout flow.
-                        self.signOut()
-                        completionHandler(nil)
-                    }
-                }
-            }
-            return
-        }
         // If using userpools sign in and global sign out is specified, we try logging out the user from all devices.
         if federationProvider == .userPools && options.signOutGlobally == true {
             let _ = self.userpoolOpsHelper.currentActiveUser!.globalSignOut().continueWith { (task) -> Any? in
@@ -525,12 +495,9 @@ extension AWSMobileClient {
     }
     
     /// Signs out the current logged in user and clears the local keychain store.
-    /// Note: This does not invalidate the tokens from the service or sign out the user from other devices. 
+    /// Note: This does not invalidate the tokens from the service or sign out the user from other devices.
     public func signOut() {
         self.credentialsFetchCancellationSource.cancel()
-        if federationProvider == .hostedUI {
-            AWSCognitoAuth.init(forKey: CognitoAuthRegistrationKey).signOutLocallyAndClearLastKnownUser()
-        }
         self.cachedLoginsMap = [:]
         self.customRoleArnInternal = nil
         self.setCustomRoleArnInternal(nil, for: self)
@@ -567,21 +534,6 @@ extension AWSMobileClient {
         self.cachedLoginsMap = [self.userPoolClient!.identityProviderName: tokenString]
         postSignInKeychainAndCredentialsUpdate(provider: .userPools,
                                                additionalInfo: [ProviderKey:self.userPoolClient!.identityProviderName, TokenKey:tokenString])
-    }
-    
-    internal func performHostedUISuccessfulSignInTasks(disableFederation: Bool = false,
-                                                       session: AWSCognitoAuthUserSession,
-                                                       federationToken: String,
-                                                       federationProviderIdentifier: String? = nil,
-                                                       signInInfo: inout [String: String]) {
-        federationDisabled = disableFederation
-        if federationProviderIdentifier == nil {
-            self.cachedLoginsMap = [self.userPoolClient!.identityProviderName: federationToken]
-        } else {
-            self.cachedLoginsMap = [federationProviderIdentifier!: federationToken]
-        }
-        postSignInKeychainAndCredentialsUpdate(provider: .hostedUI,
-                                               additionalInfo: signInInfo)
     }
     
     internal func performFederatedSignInTasks(provider: String, token: String) {
@@ -715,10 +667,6 @@ extension AWSMobileClient {
             self.userpoolOpsHelper.passwordAuthTaskCompletionSource = nil
             self.userpoolOpsHelper.customAuthChallengeTaskCompletionSource?.set(error: AWSMobileClientError.unableToSignIn(message: "Unable to get valid sign in session from the end user."))
             self.userpoolOpsHelper.customAuthChallengeTaskCompletionSource = nil
-        } else if self.federationProvider == .hostedUI {
-            self.pendingGetTokensCompletion?(nil, AWSMobileClientError.unableToSignIn(message: "Could not get valid token from the user."))
-            self.pendingGetTokensCompletion = nil
-            self.tokenFetchLock.leave()
         } else if self.federationProvider == .oidcFederation {
             self.pendingAWSCredentialsCompletion?(nil, AWSMobileClientError.unableToSignIn(message: "Could not get valid federation token from the user."))
             self.pendingAWSCredentialsCompletion = nil
@@ -734,37 +682,13 @@ extension AWSMobileClient {
     /// - Parameter completionHandler: Tokens if available, else error.
     public func getTokens(_ completionHandler: @escaping (Tokens?, Error?) -> Void) {
         switch self.federationProvider {
-        case .userPools, .hostedUI:
+        case .userPools:
             break
         default:
             completionHandler(nil, AWSMobileClientError.notSignedIn(message: "User is not signed in, please sign in to use this API."))
             return
         }
         
-        if self.federationProvider == .hostedUI {
-            self.tokenFetchOperationQueue.addOperation {
-                self.tokenFetchLock.enter()
-                AWSCognitoAuth.init(forKey: self.CognitoAuthRegistrationKey).getSession({ (session, error) in
-                    if let error = error as? AWSCognitoAuthClientErrorType {
-                        if error == AWSCognitoAuthClientErrorType.errorExpiredRefreshToken {
-                            self.pendingGetTokensCompletion = completionHandler
-                            self.mobileClientStatusChanged(userState: .signedOutUserPoolsTokenInvalid, additionalInfo: [self.ProviderKey:"OAuth"])
-                            // return early without releasing the tokenFetch lock.
-                            return
-                        } else {
-                            completionHandler(nil, AWSMobileClientError.makeMobileClientError(from: error))
-                        }
-                    } else if let session = session {
-                        completionHandler(self.getTokensForCognitoAuthSession(session: session), nil)
-                    } else {
-                        completionHandler(nil, error)
-                    }
-                    self.tokenFetchLock.leave()
-                })
-                self.tokenFetchLock.wait()
-            }
-            return
-        }
         if self.federationProvider == .userPools {
             self.userpoolOpsHelper.userpoolClient?.delegate = self.userpoolOpsHelper
             self.userpoolOpsHelper.authHelperDelegate = self
@@ -1048,20 +972,5 @@ extension AWSMobileClient {
         if let _ = self.keychain.string(forKey: FederationDisabledKey) {
             self.federationDisabled = true
         }
-    }
-}
-
-extension AWSMobileClient: AWSCognitoAuthDelegate {
-    
-    public func getViewController() -> UIViewController {
-        // This should never get called based on the design
-        if (developerNavigationController?.visibleViewController != nil) {
-            return developerNavigationController!.visibleViewController!
-        }
-        return UIApplication.shared.keyWindow!.rootViewController!
-    }
-    
-    public func shouldLaunchSignInVCIfRefreshTokenIsExpired() -> Bool {
-        return false
     }
 }

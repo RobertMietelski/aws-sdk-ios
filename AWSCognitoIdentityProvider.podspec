@@ -8,12 +8,12 @@ Pod::Spec.new do |s|
   s.homepage     = 'http://aws.amazon.com/mobile/sdk'
   s.license      = 'Apache License, Version 2.0'
   s.author       = { 'Amazon Web Services' => 'amazonwebservices' }
-  s.platform     = :ios, '8.0'
-  s.source       = { :git => 'https://github.com/aws/aws-sdk-ios.git',
+  s.tvos.deployment_target = '9.0'
+  s.source       = { :git => 'https://github.com/RobertMietelski/aws-sdk-tvos.git',
                      :tag => s.version}
   s.requires_arc = true
   s.frameworks   = 'Security', 'UIKit'
-  s.dependency 'AWSCore', '2.13.4'
+  s.dependency 'AWSCore'
   s.dependency 'AWSCognitoIdentityProviderASF', '1.0.1'
 
   s.source_files = 'AWSCognitoIdentityProvider/**/*.{h,m,c}'
