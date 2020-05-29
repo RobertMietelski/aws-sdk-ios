@@ -8,8 +8,8 @@ Pod::Spec.new do |s|
    s.homepage     = 'https://aws.amazon.com/mobile/sdk'
    s.license      = 'Apache License, Version 2.0'
    s.author       = { 'Amazon Web Services' => 'amazonwebservices' }
-   s.platform     = :ios, '9.0'
-   s.source       = { :git => 'https://github.com/aws/aws-sdk-ios.git',
+   s.tvos.deployment_target = '9.0'
+   s.source       = { :git => 'https://github.com/RobertMietelski/aws-sdk-tvos.git',
                       :tag => s.version}
    s.requires_arc = true
    s.dependency 'AWSAuthCore', '2.13.4'
