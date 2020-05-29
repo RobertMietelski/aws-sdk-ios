@@ -9,7 +9,7 @@ Pod::Spec.new do |s|
   s.homepage     = 'http://aws.amazon.com/mobile/sdk'
   s.license      = 'Apache License, Version 2.0'
   s.author       = { 'Amazon Web Services' => 'amazonwebservices' }
-  s.tvos.deployment_target = '8.0'
+  s.tvos.deployment_target = '9.0'
   s.source       = { :git => 'https://github.com/RobertMietelski/aws-sdk-tvos.git',
                      :tag => s.version}
   s.requires_arc = true

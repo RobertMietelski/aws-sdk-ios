@@ -1,6 +1,5 @@
 #import "AWSCognitoIdentityASF.h"
 #import <UIKit/UIKit.h>
-#import <CoreTelephony/CTCarrier.h>
 #import <sys/utsname.h>
 #import <CommonCrypto/CommonHMAC.h>
 
