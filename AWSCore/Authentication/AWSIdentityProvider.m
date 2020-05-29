@@ -115,7 +115,13 @@ NSString *const AWSIdentityProviderAmazonCognitoIdentity = @"cognito-identity.am
 @property (nonatomic, strong) AWSCognitoIdentity *cognitoIdentity;
 @property (nonatomic, strong) AWSExecutor *executor;
 @property (atomic, assign) int32_t count;
+
+#if OS_OBJECT_USE_OBJC
 @property (nonatomic, strong) dispatch_semaphore_t semaphore;
+#else
+@property (nonatomic, assign) dispatch_semaphore_t semaphore;
+#endif
+
 @property (atomic, assign) BOOL hasClearedIdentityId;
 
 @end
